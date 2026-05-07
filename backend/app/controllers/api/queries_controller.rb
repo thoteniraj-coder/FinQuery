@@ -1,0 +1,47 @@
+module Api
+  class QueriesController < ApplicationController
+    rescue_from StandardError, with: :render_server_error
+    rescue_from ArgumentError, with: :render_bad_request
+
+    def create
+      prompt = required_param(:prompt)
+      generated = Finquery::AnthropicClient.new.generate_sql(prompt)
+      result = Finquery::SqlRunner.call(generated[:sql])
+
+      render json: generated.merge(result: result)
+    end
+
+    def generate
+      prompt = required_param(:prompt)
+
+      render json: Finquery::AnthropicClient.new.generate_sql(prompt)
+    end
+
+    def run
+      sql = required_param(:sql)
+
+      render json: {
+        sql: Finquery::SqlGuard.validate!(sql),
+        result: Finquery::SqlRunner.call(sql)
+      }
+    end
+
+    private
+
+    def required_param(name)
+      value = params[name]
+      raise ArgumentError, "#{name} is required" if value.blank?
+
+      value
+    end
+
+    def render_bad_request(error)
+      render json: { error: error.message }, status: :bad_request
+    end
+
+    def render_server_error(error)
+      Rails.logger.error("#{error.class}: #{error.message}")
+      render json: { error: error.message }, status: :internal_server_error
+    end
+  end
+end
