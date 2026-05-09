@@ -1,9 +1,6 @@
-# SQLite. Versions 3.8.0 and up are supported.
-#   gem install sqlite3
-#
-#   Ensure the SQLite 3 gem is defined in your Gemfile
-#   gem "sqlite3"
-#
+# Development can use MySQL by setting DATABASE_URL, for example:
+# DATABASE_URL=mysql2://root:password@127.0.0.1/finquery_development
+# If DATABASE_URL is not set, the app falls back to the local SQLite database.
 default: &default
   adapter: sqlite3
   max_connections: <%= ENV.fetch("RAILS_MAX_THREADS") { 5 } %>
@@ -12,6 +9,7 @@ default: &default
 development:
   <<: *default
   database: storage/development.sqlite3
+  url: <%= ENV["DATABASE_URL"] %>
 
 # Warning: The database defined as "test" will be erased and
 # re-generated from your development database when you run "rake".
@@ -26,6 +24,7 @@ production:
   primary:
     <<: *default
     database: storage/production.sqlite3
+    url: <%= ENV["DATABASE_URL"] %>
   cache:
     <<: *default
     database: storage/production_cache.sqlite3

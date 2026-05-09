@@ -5,6 +5,32 @@ Rails.application.routes.draw do
     post "query", to: "queries#create"
     post "generate-sql", to: "queries#generate"
     post "run-sql", to: "queries#run"
+    post "financial_documents", to: "financial_documents#create"
+
+    namespace :v1 do
+      post "auth/login", to: "auth#login"
+      get "auth/me", to: "auth#me"
+      delete "auth/logout", to: "auth#logout"
+
+      resources :vendors
+      resources :users, only: [:index, :update]
+      resources :document_serial_settings, only: [:index, :show, :update]
+
+      resources :purchase_orders, only: [:index, :show] do
+        get "match", to: "purchase_orders#three_way_match"
+        post "review", to: "purchase_orders#review"
+      end
+
+      resources :grns, only: [:index, :show] do
+        get "match", to: "grns#three_way_match"
+        post "review", to: "grns#review"
+      end
+
+      resources :bills, only: [:index, :show] do
+        get "match", to: "bills#three_way_match"
+        post "review", to: "bills#review"
+      end
+    end
   end
 
   # Reveal health status on /up that returns 200 if the app boots with no exceptions, otherwise 500.

@@ -5,16 +5,17 @@ module Api
 
     def create
       prompt = required_param(:prompt)
-      generated = Finquery::AnthropicClient.new.generate_sql(prompt)
-      result = Finquery::SqlRunner.call(generated[:sql])
+      generated = Finquery::QueryGenerator.new.generate_sql(prompt)
+      sql = Finquery::SqlGuard.validate!(generated[:sql])
+      result = Finquery::SqlRunner.call(sql)
 
-      render json: generated.merge(result: result)
+      render json: generated.merge(sql: sql, result: result)
     end
 
     def generate
       prompt = required_param(:prompt)
 
-      render json: Finquery::AnthropicClient.new.generate_sql(prompt)
+      render json: Finquery::QueryGenerator.new.generate_sql(prompt)
     end
 
     def run

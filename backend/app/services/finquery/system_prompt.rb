@@ -1,7 +1,7 @@
 module Finquery
   module SystemPrompt
     PROMPT = <<~PROMPT
-      SQLite SQL generator for a financial procurement system.
+      SQL generator for a financial procurement system.
       Return ONLY the SQL query. No explanation, no markdown, no backticks.
 
       TABLES:
@@ -52,7 +52,7 @@ module Finquery
 
       SQL RULES:
       Use ROUND(x,2) for monetary calculations.
-      Use strftime('%Y-%m', date_col) for month grouping.
+      Use the date functions supported by the current database adapter.
       Default ORDER is monetary DESC or date DESC.
       LIMIT 100 unless the user asks for more.
       Use table aliases: po, poi, v, g, gi, b, bi, i.

@@ -9,9 +9,11 @@
 #   end
 connection = ActiveRecord::Base.connection
 
-%w[bill_items bills grn_items grn po_items purchase_orders vendors items].each do |table|
+%w[bill_items bills grn_items grn po_items purchase_orders vendors items document_serial_settings].each do |table|
+  next unless connection.data_source_exists?(table)
+
   connection.execute("DELETE FROM #{table}")
-  connection.execute("DELETE FROM sqlite_sequence WHERE name='#{table}'")
+  connection.execute("DELETE FROM sqlite_sequence WHERE name='#{table}'") if connection.adapter_name.downcase.include?("sqlite")
 end
 
 seed_sql = <<~SQL
@@ -59,6 +61,13 @@ seed_sql = <<~SQL
     (1, 1, 1, 1, 5000, 62.50, 18),
     (2, 2, 2, 2, 4500, 38.00, 18),
     (3, NULL, NULL, 3, 200, 210.00, 18);
+
+  INSERT INTO document_serial_settings
+    (doc_type, prefix, range_start, range_end, current_number, padding, active, created_at, updated_at)
+  VALUES
+    ('po', 'PO-2026-', 1, 999, 4, 3, 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+    ('grn', 'GRN-2026-', 1, 999, 3, 3, 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+    ('bill', 'BILL-2026-', 1, 999, 3, 3, 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
 SQL
 
 seed_sql.split(";").each do |statement|

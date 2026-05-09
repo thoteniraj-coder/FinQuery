@@ -127,6 +127,10 @@ CREATE INDEX idx_bills_status ON bills(status) /*application='Backend'*/;
 CREATE INDEX idx_bill_items_bill ON bill_items(bill_id) /*application='Backend'*/;
 CREATE INDEX idx_bill_items_poi ON bill_items(po_item_id) /*application='Backend'*/;
 CREATE INDEX idx_bill_items_grni ON bill_items(grn_item_id) /*application='Backend'*/;
+CREATE TABLE IF NOT EXISTS "document_serial_settings" ("id" integer PRIMARY KEY AUTOINCREMENT NOT NULL, "doc_type" varchar NOT NULL, "prefix" varchar NOT NULL, "range_start" integer DEFAULT 1 NOT NULL, "range_end" integer DEFAULT 999999 NOT NULL, "current_number" integer DEFAULT 0 NOT NULL, "padding" integer DEFAULT 3 NOT NULL, "active" boolean DEFAULT TRUE NOT NULL, "created_at" datetime(6) NOT NULL, "updated_at" datetime(6) NOT NULL);
+CREATE UNIQUE INDEX "index_document_serial_settings_on_doc_type" ON "document_serial_settings" ("doc_type") /*application='Backend'*/;
 INSERT INTO "schema_migrations" (version) VALUES
+('20260510000000'),
+('20260508191855'),
 ('20260508000000');
 
