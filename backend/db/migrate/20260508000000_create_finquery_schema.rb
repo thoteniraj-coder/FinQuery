@@ -1,146 +1,114 @@
 class CreateFinquerySchema < ActiveRecord::Migration[8.1]
   def up
-    schema_sql = <<~SQL
-      CREATE TABLE items (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        item_code TEXT NOT NULL UNIQUE,
-        name TEXT NOT NULL,
-        category TEXT,
-        uom TEXT NOT NULL DEFAULT 'Nos',
-        std_price REAL NOT NULL DEFAULT 0,
-        hsn_code TEXT,
-        default_tax_pct REAL NOT NULL DEFAULT 18
-      );
-
-      CREATE TABLE vendors (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        vendor_code TEXT NOT NULL UNIQUE,
-        name TEXT NOT NULL,
-        gstin TEXT UNIQUE,
-        city TEXT,
-        state TEXT,
-        contact_name TEXT,
-        contact_email TEXT,
-        contact_phone TEXT,
-        payment_terms TEXT DEFAULT 'Net 30',
-        credit_limit REAL DEFAULT 0,
-        status TEXT NOT NULL DEFAULT 'active'
-          CHECK(status IN ('active','inactive','blacklisted'))
-      );
-
-      CREATE TABLE purchase_orders (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        po_number TEXT NOT NULL UNIQUE,
-        vendor_id INTEGER NOT NULL REFERENCES vendors(id),
-        order_date TEXT NOT NULL,
-        delivery_date TEXT,
-        status TEXT NOT NULL DEFAULT 'open'
-          CHECK(status IN ('open','partial','closed','cancelled')),
-        ship_to_address TEXT,
-        subtotal REAL NOT NULL DEFAULT 0,
-        tax_amount REAL NOT NULL DEFAULT 0,
-        total_amount REAL NOT NULL DEFAULT 0,
-        notes TEXT
-      );
-
-      CREATE TABLE po_items (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        po_id INTEGER NOT NULL REFERENCES purchase_orders(id) ON DELETE CASCADE,
-        item_id INTEGER NOT NULL REFERENCES items(id),
-        line_no INTEGER NOT NULL,
-        description TEXT,
-        qty_ordered REAL NOT NULL,
-        uom TEXT NOT NULL,
-        unit_price REAL NOT NULL,
-        tax_pct REAL NOT NULL DEFAULT 18,
-        tax_amount REAL GENERATED ALWAYS AS
-          (ROUND(qty_ordered * unit_price * tax_pct / 100, 2)) VIRTUAL,
-        line_total REAL GENERATED ALWAYS AS
-          (ROUND(qty_ordered * unit_price, 2)) VIRTUAL
-      );
-
-      CREATE TABLE grn (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        grn_number TEXT NOT NULL UNIQUE,
-        po_id INTEGER REFERENCES purchase_orders(id),
-        vendor_id INTEGER NOT NULL REFERENCES vendors(id),
-        receipt_date TEXT NOT NULL,
-        received_by TEXT,
-        warehouse TEXT,
-        quality_status TEXT NOT NULL DEFAULT 'pending'
-          CHECK(quality_status IN ('pending','accepted','partial','rejected')),
-        notes TEXT,
-        total_received_value REAL NOT NULL DEFAULT 0
-      );
-
-      CREATE TABLE grn_items (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        grn_id INTEGER NOT NULL REFERENCES grn(id) ON DELETE CASCADE,
-        po_item_id INTEGER REFERENCES po_items(id),
-        item_id INTEGER NOT NULL REFERENCES items(id),
-        qty_received REAL NOT NULL,
-        qty_accepted REAL NOT NULL DEFAULT 0,
-        qty_rejected REAL NOT NULL DEFAULT 0,
-        reject_reason TEXT,
-        unit_price REAL NOT NULL,
-        line_value REAL GENERATED ALWAYS AS
-          (ROUND(qty_accepted * unit_price, 2)) VIRTUAL
-      );
-
-      CREATE TABLE bills (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        bill_number TEXT NOT NULL UNIQUE,
-        vendor_bill_ref TEXT,
-        vendor_id INTEGER NOT NULL REFERENCES vendors(id),
-        po_id INTEGER REFERENCES purchase_orders(id),
-        grn_id INTEGER REFERENCES grn(id),
-        bill_date TEXT NOT NULL,
-        due_date TEXT NOT NULL,
-        subtotal REAL NOT NULL DEFAULT 0,
-        tax_amount REAL NOT NULL DEFAULT 0,
-        total_amount REAL NOT NULL DEFAULT 0,
-        status TEXT NOT NULL DEFAULT 'unpaid'
-          CHECK(status IN ('unpaid','paid','overdue','disputed','cancelled')),
-        payment_date TEXT,
-        payment_ref TEXT
-      );
-
-      CREATE TABLE bill_items (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        bill_id INTEGER NOT NULL REFERENCES bills(id) ON DELETE CASCADE,
-        po_item_id INTEGER REFERENCES po_items(id),
-        grn_item_id INTEGER REFERENCES grn_items(id),
-        item_id INTEGER NOT NULL REFERENCES items(id),
-        qty_billed REAL NOT NULL,
-        unit_price REAL NOT NULL,
-        tax_pct REAL NOT NULL DEFAULT 18,
-        tax_amount REAL GENERATED ALWAYS AS
-          (ROUND(qty_billed * unit_price * tax_pct / 100, 2)) VIRTUAL,
-        line_total REAL GENERATED ALWAYS AS
-          (ROUND(qty_billed * unit_price, 2)) VIRTUAL
-      );
-
-      CREATE INDEX idx_po_vendor ON purchase_orders(vendor_id);
-      CREATE INDEX idx_po_status ON purchase_orders(status);
-      CREATE INDEX idx_po_items_po ON po_items(po_id);
-      CREATE INDEX idx_po_items_item ON po_items(item_id);
-      CREATE INDEX idx_grn_po ON grn(po_id);
-      CREATE INDEX idx_grn_vendor ON grn(vendor_id);
-      CREATE INDEX idx_grn_items_grn ON grn_items(grn_id);
-      CREATE INDEX idx_grn_items_poitem ON grn_items(po_item_id);
-      CREATE INDEX idx_grn_items_item ON grn_items(item_id);
-      CREATE INDEX idx_bills_vendor ON bills(vendor_id);
-      CREATE INDEX idx_bills_po ON bills(po_id);
-      CREATE INDEX idx_bills_grn ON bills(grn_id);
-      CREATE INDEX idx_bills_status ON bills(status);
-      CREATE INDEX idx_bill_items_bill ON bill_items(bill_id);
-      CREATE INDEX idx_bill_items_poi ON bill_items(po_item_id);
-      CREATE INDEX idx_bill_items_grni ON bill_items(grn_item_id);
-    SQL
-
-    schema_sql.split(";").each do |statement|
-      execute(statement) if statement.strip.present?
+    create_table :items do |t|
+      t.string :item_code, null: false
+      t.string :name, null: false
+      t.string :category
+      t.string :uom, null: false, default: "Nos"
+      t.decimal :std_price, precision: 15, scale: 2, null: false, default: 0
+      t.string :hsn_code
+      t.decimal :default_tax_pct, precision: 8, scale: 2, null: false, default: 18
     end
+    add_index :items, :item_code, unique: true
+
+    create_table :vendors do |t|
+      t.string :vendor_code, null: false
+      t.string :name, null: false
+      t.string :gstin
+      t.string :city
+      t.string :state
+      t.string :contact_name
+      t.string :contact_email
+      t.string :contact_phone
+      t.string :payment_terms, default: "Net 30"
+      t.decimal :credit_limit, precision: 15, scale: 2, default: 0
+      t.string :status, null: false, default: "active"
+    end
+    add_index :vendors, :vendor_code, unique: true
+    add_index :vendors, :gstin, unique: true
+
+    create_table :purchase_orders do |t|
+      t.string :po_number, null: false
+      t.references :vendor, null: false, foreign_key: true
+      t.string :order_date, null: false
+      t.string :delivery_date
+      t.string :status, null: false, default: "open"
+      t.string :ship_to_address
+      t.decimal :subtotal, precision: 15, scale: 2, null: false, default: 0
+      t.decimal :tax_amount, precision: 15, scale: 2, null: false, default: 0
+      t.decimal :total_amount, precision: 15, scale: 2, null: false, default: 0
+      t.text :notes
+    end
+    add_index :purchase_orders, :po_number, unique: true
+    add_index :purchase_orders, :status
+
+    create_table :po_items do |t|
+      t.references :po, null: false, foreign_key: { to_table: :purchase_orders }, index: true
+      t.references :item, null: false, foreign_key: true, index: true
+      t.integer :line_no, null: false
+      t.string :description
+      t.decimal :qty_ordered, precision: 15, scale: 2, null: false
+      t.string :uom, null: false
+      t.decimal :unit_price, precision: 15, scale: 2, null: false
+      t.decimal :tax_pct, precision: 8, scale: 2, null: false, default: 18
+    end
+    add_generated_column :po_items, :tax_amount, "ROUND(qty_ordered * unit_price * tax_pct / 100, 2)"
+    add_generated_column :po_items, :line_total, "ROUND(qty_ordered * unit_price, 2)"
+
+    create_table :grn do |t|
+      t.string :grn_number, null: false
+      t.references :po, foreign_key: { to_table: :purchase_orders }, index: true
+      t.references :vendor, null: false, foreign_key: true, index: true
+      t.string :receipt_date, null: false
+      t.string :received_by
+      t.string :warehouse
+      t.string :quality_status, null: false, default: "pending"
+      t.text :notes
+      t.decimal :total_received_value, precision: 15, scale: 2, null: false, default: 0
+    end
+    add_index :grn, :grn_number, unique: true
+
+    create_table :grn_items do |t|
+      t.references :grn, null: false, foreign_key: { to_table: :grn }, index: true
+      t.references :po_item, foreign_key: { to_table: :po_items }, index: true
+      t.references :item, null: false, foreign_key: true, index: true
+      t.decimal :qty_received, precision: 15, scale: 2, null: false
+      t.decimal :qty_accepted, precision: 15, scale: 2, null: false, default: 0
+      t.decimal :qty_rejected, precision: 15, scale: 2, null: false, default: 0
+      t.string :reject_reason
+      t.decimal :unit_price, precision: 15, scale: 2, null: false
+    end
+    add_generated_column :grn_items, :line_value, "ROUND(qty_accepted * unit_price, 2)"
+
+    create_table :bills do |t|
+      t.string :bill_number, null: false
+      t.string :vendor_bill_ref
+      t.references :vendor, null: false, foreign_key: true, index: true
+      t.references :po, foreign_key: { to_table: :purchase_orders }, index: true
+      t.references :grn, foreign_key: { to_table: :grn }, index: true
+      t.string :bill_date, null: false
+      t.string :due_date, null: false
+      t.decimal :subtotal, precision: 15, scale: 2, null: false, default: 0
+      t.decimal :tax_amount, precision: 15, scale: 2, null: false, default: 0
+      t.decimal :total_amount, precision: 15, scale: 2, null: false, default: 0
+      t.string :status, null: false, default: "unpaid"
+      t.string :payment_date
+      t.string :payment_ref
+    end
+    add_index :bills, :bill_number, unique: true
+    add_index :bills, :status
+
+    create_table :bill_items do |t|
+      t.references :bill, null: false, foreign_key: true, index: true
+      t.references :po_item, foreign_key: { to_table: :po_items }, index: true
+      t.references :grn_item, foreign_key: { to_table: :grn_items }, index: true
+      t.references :item, null: false, foreign_key: true
+      t.decimal :qty_billed, precision: 15, scale: 2, null: false
+      t.decimal :unit_price, precision: 15, scale: 2, null: false
+      t.decimal :tax_pct, precision: 8, scale: 2, null: false, default: 18
+    end
+    add_generated_column :bill_items, :tax_amount, "ROUND(qty_billed * unit_price * tax_pct / 100, 2)"
+    add_generated_column :bill_items, :line_total, "ROUND(qty_billed * unit_price, 2)"
   end
 
   def down
@@ -152,5 +120,20 @@ class CreateFinquerySchema < ActiveRecord::Migration[8.1]
     drop_table :purchase_orders, if_exists: true
     drop_table :vendors, if_exists: true
     drop_table :items, if_exists: true
+  end
+
+  private
+
+  def add_generated_column(table, column, expression)
+    type = mysql_adapter? ? "DECIMAL(15,2)" : "REAL"
+    execute <<~SQL.squish
+      ALTER TABLE #{table}
+      ADD COLUMN #{column} #{type}
+      GENERATED ALWAYS AS (#{expression}) VIRTUAL
+    SQL
+  end
+
+  def mysql_adapter?
+    connection.adapter_name.downcase.include?("mysql")
   end
 end
