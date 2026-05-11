@@ -41,6 +41,34 @@ Save this value for Render:
 DATABASE_URL=mysql2://USER:PASSWORD@HOST:PORT/DATABASE
 ```
 
+For TiDB Cloud Starter/Serverless, public connections require TLS. Use:
+
+```env
+DATABASE_URL=mysql2://USER_PREFIX.root:PASSWORD@HOST:4000/DATABASE?ssl_mode=verify_identity
+```
+
+Without `ssl_mode=verify_identity`, Render can fail during `db:prepare` with:
+
+```text
+Connections using insecure transport are prohibited.
+```
+
+TiDB Cloud Starter/Essential also requires a username prefix. In TiDB Cloud, open:
+
+```text
+Cluster -> Connect -> General
+```
+
+Copy the username exactly from the connection string. It looks like:
+
+```text
+abc123xyz.root
+```
+
+Use that full value in `DATABASE_URL`, not only `root`.
+
+Do not use TiDB system databases such as `sys`, `mysql`, `INFORMATION_SCHEMA`, or `PERFORMANCE_SCHEMA` for the app. Use `test` for a quick demo, or create an app database such as `finquery_production`.
+
 ## 3. Deploy Ollama On Oracle Cloud Always Free
 
 Create an Oracle Cloud Always Free VM. Prefer Ampere A1 if available because it can provide more free RAM than most free hosts.
@@ -138,7 +166,7 @@ Add these environment variables in Render:
 ```env
 RAILS_ENV=production
 RAILS_MASTER_KEY=PASTE_VALUE_FROM_backend/config/master.key
-DATABASE_URL=mysql2://USER:PASSWORD@HOST:PORT/DATABASE
+DATABASE_URL=mysql2://USER_PREFIX.root:PASSWORD@HOST:4000/DATABASE?ssl_mode=verify_identity
 FRONTEND_ORIGINS=https://YOUR_FRONTEND_DOMAIN.vercel.app
 FINQUERY_AI_PROVIDER=ollama
 OLLAMA_BASE_URL=http://YOUR_ORACLE_VM_PUBLIC_IP:11434
