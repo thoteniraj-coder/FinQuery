@@ -20,6 +20,24 @@ RUN apt-get update -qq && \
     ln -s /usr/lib/$(uname -m)-linux-gnu/libjemalloc.so.2 /usr/local/lib/libjemalloc.so && \
     rm -rf /var/lib/apt/lists /var/cache/apt/archives
 
+# Provide a wrapper for the mysql CLI to translate MySQL's --ssl-mode flag to MariaDB's equivalent
+# This fixes schema loading (db:prepare) when deploying to Render with TiDB or PlanetScale
+RUN echo '#!/bin/bash\n\
+args=()\n\
+for arg in "$@"; do\n\
+  if [[ "$arg" == "--ssl-mode=verify_identity" || "$arg" == "--ssl-mode=verify_full" ]]; then\n\
+    args+=("--ssl-verify-server-cert")\n\
+  elif [[ "$arg" == "--ssl-mode=require" ]]; then\n\
+    args+=("--ssl")\n\
+  elif [[ "$arg" == "--ssl-mode"* ]]; then\n\
+    :\n\
+  else\n\
+    args+=("$arg")\n\
+  fi\n\
+done\n\
+exec /usr/bin/mysql "${args[@]}"' > /usr/local/bin/mysql && \
+    chmod +x /usr/local/bin/mysql
+
 # Set production environment variables and enable jemalloc for reduced memory usage and latency.
 ENV RAILS_ENV="production" \
     BUNDLE_DEPLOYMENT="1" \
