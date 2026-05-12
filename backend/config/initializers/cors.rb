@@ -6,7 +6,7 @@
 # Read more: https://github.com/cyu/rack-cors
 
 Rails.application.config.middleware.insert_before 0, Rack::Cors do
-  allowed_origins = ENV.fetch("https://fin-query-eight.vercel.app", "http://localhost:5173,http://127.0.0.1:5173")
+  allowed_origins = ENV.fetch("FRONTEND_ORIGINS", "https://fin-query-eight.vercel.app,http://localhost:5173,http://127.0.0.1:5173")
     .split(",")
     .map { |origin| origin.strip.delete_suffix("/") }
     .reject(&:blank?)
