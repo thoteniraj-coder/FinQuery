@@ -1,6 +1,7 @@
 module Api
   class QueriesController < ApplicationController
     rescue_from StandardError, with: :render_server_error
+    rescue_from Finquery::UpstreamUnavailableError, with: :render_upstream_unavailable
     rescue_from ArgumentError, with: :render_bad_request
 
     def create
@@ -38,6 +39,11 @@ module Api
 
     def render_bad_request(error)
       render json: { error: error.message }, status: :bad_request
+    end
+
+    def render_upstream_unavailable(error)
+      Rails.logger.error("#{error.class}: #{error.message}")
+      render json: { error: error.message }, status: :service_unavailable
     end
 
     def render_server_error(error)
