@@ -43,17 +43,26 @@ module Finquery
         http.request(request)
       end
 
-      parsed = JSON.parse(response.body)
+      parsed = parse_response_body(response)
       return parsed if response.is_a?(Net::HTTPSuccess)
 
-      message = parsed["error"].presence || response.body
-      raise StandardError, "Ollama API Error: #{message}"
+      message = parsed.is_a?(Hash) ? parsed["error"].presence : nil
+      raise Finquery::UpstreamUnavailableError, "Ollama API returned HTTP #{response.code}: #{message || response_body_preview(response.body)}"
     rescue Errno::ECONNREFUSED, Net::OpenTimeout
       raise Finquery::UpstreamUnavailableError, "Ollama is not reachable at #{base_url}. Start Ollama or update OLLAMA_BASE_URL."
     rescue Socket::ResolutionError, SocketError
       raise Finquery::UpstreamUnavailableError, "Ollama host cannot be resolved: #{base_url}. If this is a trycloudflare.com URL, create a new tunnel and update OLLAMA_BASE_URL."
+    end
+
+    def parse_response_body(response)
+      JSON.parse(response.body)
     rescue JSON::ParserError
-      raise StandardError, "Ollama returned an invalid response."
+      raise Finquery::UpstreamUnavailableError, "Ollama returned HTTP #{response.code} with non-JSON response: #{response_body_preview(response.body)}"
+    end
+
+    def response_body_preview(body)
+      preview = body.to_s.gsub(/\s+/, " ").strip
+      preview.present? ? preview.first(180) : "empty response body"
     end
 
     def prompt_body(prompt)
