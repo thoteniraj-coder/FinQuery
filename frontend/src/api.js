@@ -6,12 +6,17 @@ function authHeader() {
 }
 
 async function request(path, options = {}) {
+  const headers = {
+    ...authHeader(),
+    ...options.headers,
+  }
+
+  if (options.body && !headers['Content-Type']) {
+    headers['Content-Type'] = 'application/json'
+  }
+
   const response = await fetch(`${API_BASE_URL}${path}`, {
-    headers: {
-      'Content-Type': 'application/json',
-      ...authHeader(),
-      ...options.headers,
-    },
+    headers,
     ...options,
   })
 
