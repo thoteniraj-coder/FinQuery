@@ -49,7 +49,9 @@ module Finquery
       message = parsed["error"].presence || response.body
       raise StandardError, "Ollama API Error: #{message}"
     rescue Errno::ECONNREFUSED, Net::OpenTimeout
-      raise StandardError, "Ollama is installed but not running. Start it with `ollama serve` or open the Ollama app."
+      raise Finquery::UpstreamUnavailableError, "Ollama is not reachable at #{base_url}. Start Ollama or update OLLAMA_BASE_URL."
+    rescue Socket::ResolutionError, SocketError
+      raise Finquery::UpstreamUnavailableError, "Ollama host cannot be resolved: #{base_url}. If this is a trycloudflare.com URL, create a new tunnel and update OLLAMA_BASE_URL."
     rescue JSON::ParserError
       raise StandardError, "Ollama returned an invalid response."
     end
